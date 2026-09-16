@@ -50,13 +50,13 @@ def create_lmdb_train(
     N = data.shape[0]
     
     print(data.shape)
-    map_size = data.nbytes * len(fns) * 1.2
+    map_size = int(data.nbytes * len(fns) * 1.2)
     print('map size (GB):', map_size / 1024 / 1024 / 1024)
     
-    import ipdb; ipdb.set_trace()
-    if os.path.exists(name+'.db'):
+    db_path = name.rstrip('/\\') + '.db'
+    if os.path.exists(db_path):
         raise Exception('database already exist!')
-    env = lmdb.open(name+'.db', map_size=map_size, writemap=True)
+    env = lmdb.open(db_path, map_size=map_size, writemap=True)
     with env.begin(write=True) as txn:
         # txn is a Transaction object
         k = 0
