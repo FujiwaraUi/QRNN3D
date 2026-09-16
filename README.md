@@ -38,7 +38,7 @@ Download ICVL hyperspectral image database from [here](http://icvl.cs.bgu.ac.il/
 
 #### Training dataset
 
-*Note cafe (via conda install) and lmdb are required to execute the following instructions.*
+*Note protobuf and lmdb are required to execute the following instructions.*
 
 * Read the function ```create_icvl64_31``` in ```utility/lmdb_data.py``` and follow the instruction comment to define your data/dataset address. 
 

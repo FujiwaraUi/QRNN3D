@@ -1,7 +1,10 @@
 """Create lmdb dataset"""
 from util import *
 import lmdb
-import caffe
+try:
+    from .caffe_datum import Datum
+except ImportError:
+    from caffe_datum import Datum
 
 MAT_DATA = "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_06_QRNN3D/mat_06_QRNN3D"
 DB_DATA =  "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_06_QRNN3D/db_06_QRNN3D"
@@ -66,7 +69,7 @@ def create_lmdb_train(
             X = preprocess(X)        
             N = X.shape[0]
             for j in range(N):
-                datum = caffe.proto.caffe_pb2.Datum()
+                datum = Datum()
                 datum.channels = X.shape[1]
                 datum.height = X.shape[2]
                 datum.width = X.shape[3]

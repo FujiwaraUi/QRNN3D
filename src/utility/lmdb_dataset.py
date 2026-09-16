@@ -6,7 +6,10 @@ import os.path
 import six
 import string
 import sys
-import caffe
+try:
+    from .caffe_datum import Datum
+except ImportError:
+    from caffe_datum import Datum
 if sys.version_info[0] == 2:
     import cPickle as pickle
 else:
@@ -36,7 +39,7 @@ class LMDBDataset(data.Dataset):
         with env.begin(write=False) as txn:
             raw_datum = txn.get('{:08}'.format(index).encode('ascii'))
 
-        datum = caffe.proto.caffe_pb2.Datum()
+        datum = Datum()
         datum.ParseFromString(raw_datum)
 
         flat_x = np.fromstring(datum.data, dtype=np.float32)

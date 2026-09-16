@@ -81,18 +81,9 @@ NVIDIA GeForce GTX 1080 と NVIDIA ドライバー 580.173.02 を使用してい
 5. 現在の未解決事項
 --------------------
 
-`src/utility/lmdb_data.py` は次のモジュールを import する。
-
-	import caffe
-
-また、`caffe.proto.caffe_pb2.Datum` を使って LMDB のデータを作成する。現在の Python 3.10 環境には Caffe は入っておらず、実行すると次のエラーになる。
-
-	ModuleNotFoundError: No module named 'caffe'
-
-conda-forge にある Caffe は Python 2.7 用の古いビルドのみで、現在の Python 3.10 環境へそのまま導入することはできない。したがって、LMDB データを生成するには、次のいずれかが必要である。
-
-* Python 2.7 と古い Caffe を使う別環境を作る。
-* `lmdb_data.py` と `lmdb_dataset.py` を修正し、Caffe の Datum 形式を別の protobuf 実装などで置き換える。
-* 既存の LMDB データを用い、新たに `lmdb_data.py` を実行しない。
+`src/utility/lmdb_data.py` と `src/utility/lmdb_dataset.py` は、Caffe を導入せずに
+`src/utility/caffe_datum.py` が定義する互換 protobuf `Datum` を使用する。
+`protobuf` は `environment.yml` に追加済みである。これにより Python 3.10 環境で
+LMDB の作成と読み込みが可能になる。
 
 なお、PyTorch と GPU の導入は完了しているが、LMDB 作成処理は Caffe の不足によりまだ実行完了していない。
