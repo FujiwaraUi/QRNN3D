@@ -3,6 +3,8 @@ from util import *
 import lmdb
 import caffe
 
+MAT_DATA = "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_06_QRNN3D/mat_06_QRNN3D"
+DB_DATA =  "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_06_QRNN3D/db_06_QRNN3D"
 
 def create_lmdb_train(
     datadir, fns, name, matkey,
@@ -96,12 +98,13 @@ def create_PaviaCentre():
 # Create ICVL training dataset
 def create_icvl64_31():
     print('create icvl64_31...')
-    datadir = '/data/weikaixuan/hsi/data/Training/' # your own data address
+    # datadir = '/data/weikaixuan/hsi/data/Training/' # your own data address. *.mat
+    datadir = MAT_DATA
     fns = os.listdir(datadir) 
     fns = [fn.split('.')[0]+'.mat' for fn in fns]
     
     create_lmdb_train(
-        datadir, fns, '/data/weikaixuan/hsi/data/ICVL64_31', 'rad',  # your own dataset address
+        datadir, fns, DB_DATA, 'rad',  # your own dataset address
         crop_sizes=(1024, 1024),
         scales=(1, 0.5, 0.25),        
         ksizes=(31, 64, 64),

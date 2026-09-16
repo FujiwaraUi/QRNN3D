@@ -4,4 +4,13 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "caffe>=0.1.0",
+    "h5py>=3.16.0",
+    "lmdb>=2.3.0",
+    "matplotlib>=3.11.2",
+    "opencv-python>=5.0.0.93",
+    "scipy>=1.18.1",
+    "torch>=2.14.0",
+    "torchvision>=0.29.0",
+]
