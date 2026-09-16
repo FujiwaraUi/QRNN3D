@@ -1,0 +1,98 @@
+QRNN3D 実行環境の構築記録
+==========================
+
+作成日: 2026-09-16
+対象: Methods/06_QRNN3D/QRNN3D
+
+1. Conda 環境
+-------------
+
+QRNN3D 用の Conda 環境 `qrnn3d` を使用している。
+環境の実体と Python は次の場所にある。
+
+	/mnt/data/miniforge3/envs/qrnn3d/bin/python
+
+Miniforge 本体は `/home/fy/miniforge3` から `/mnt/data/miniforge3` へ移動した。旧パスには、既存の shebang や設定との互換性を保つため、新パスを指す symlink を残している。
+
+Python のバージョンは 3.10.21 である。
+環境の定義ファイルは `environment.yml` であり、主に h5py、lmdb、matplotlib、opencv、scipy などが定義されている。ただし、元の `environment.yml` には PyTorch は含まれていなかった。
+
+端末で環境を有効化するコマンド:
+
+	source /mnt/data/miniforge3/etc/profile.d/conda.sh
+	conda activate qrnn3d
+
+環境を有効化できない場合は、環境内の Python を直接指定できる。
+
+	/mnt/data/miniforge3/envs/qrnn3d/bin/python script.py
+
+2. PyTorch の導入
+-----------------
+
+最初に PyPI の通常版を試したが、CUDA 関連ライブラリのダウンロード途中でキャンセルされた。その後、いったん CPU 版を導入して import を確認した。
+
+	/mnt/data/miniforge3/envs/qrnn3d/bin/python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+その後、GPU を使用するため CPU 版を削除し、CUDA 12.6 対応版へ入れ替えた。
+
+	/mnt/data/miniforge3/envs/qrnn3d/bin/python -m pip uninstall -y torch torchvision
+	/mnt/data/miniforge3/envs/qrnn3d/bin/python -m pip install --no-cache-dir \
+		torch==2.7.1+cu126 torchvision==0.22.1+cu126 \
+		--index-url https://download.pytorch.org/whl/cu126
+
+導入されたバージョン:
+
+	torch       2.7.1+cu126
+	torchvision 0.22.1+cu126
+
+3. GPU の確認
+-------------
+
+NVIDIA GeForce GTX 1080 と NVIDIA ドライバー 580.173.02 を使用している。
+以下の確認で GPU が認識された。
+
+	/mnt/data/miniforge3/envs/qrnn3d/bin/python -c \
+	  'import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))'
+
+確認結果:
+
+	2.7.1+cu126
+	True
+	NVIDIA GeForce GTX 1080
+
+4. LMDB 関連パッケージ
+----------------------
+
+`lmdb_data.py` 実行時に `lmdb` が不足していたため、同じ環境へ追加した。
+
+	/mnt/data/miniforge3/envs/qrnn3d/bin/python -m pip install lmdb
+
+現在の主なパッケージ:
+
+	h5py                     3.16.0
+	lmdb                     2.3.0
+	matplotlib               3.10.9
+	opencv-python            5.0.0
+	opencv-python-headless   5.0.0
+	scipy                    1.15.2
+	torch                    2.7.1+cu126
+	torchvision              0.22.1+cu126
+
+5. 現在の未解決事項
+--------------------
+
+`src/utility/lmdb_data.py` は次のモジュールを import する。
+
+	import caffe
+
+また、`caffe.proto.caffe_pb2.Datum` を使って LMDB のデータを作成する。現在の Python 3.10 環境には Caffe は入っておらず、実行すると次のエラーになる。
+
+	ModuleNotFoundError: No module named 'caffe'
+
+conda-forge にある Caffe は Python 2.7 用の古いビルドのみで、現在の Python 3.10 環境へそのまま導入することはできない。したがって、LMDB データを生成するには、次のいずれかが必要である。
+
+* Python 2.7 と古い Caffe を使う別環境を作る。
+* `lmdb_data.py` と `lmdb_dataset.py` を修正し、Caffe の Datum 形式を別の protobuf 実装などで置き換える。
+* 既存の LMDB データを用い、新たに `lmdb_data.py` を実行しない。
+
+なお、PyTorch と GPU の導入は完了しているが、LMDB 作成処理は Caffe の不足によりまだ実行完了していない。

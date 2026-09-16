@@ -1,0 +1,13 @@
+name: qrnn3d
+channels:
+  - conda-forge
+dependencies:
+  - h5py
+  - lmdb
+  - matplotlib
+  - opencv
+  - pip
+  - python=3.10
+  - scipy
+
+prefix: "/mnt/data/miniforge3/envs/qrnn3d"
