@@ -1,0 +1,12 @@
+ICVL_t*.txt files: 3
+ICVL unique entries: 201
+mat_ls_result.txt unique entries: 202
+
+Entries listed in ICVL_t*.txt but missing from mat_ls_result.txt:
+(none)
+
+Entries listed in mat_ls_result.txt but missing from ICVL_t*.txt:
+objects_0924-1608.mat
+
+Duplicate entries:
+(none)
