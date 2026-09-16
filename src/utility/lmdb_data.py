@@ -1,6 +1,7 @@
 """Create lmdb dataset"""
 from util import *
 import lmdb
+import shutil
 try:
     from .caffe_datum import Datum
 except ImportError:
@@ -55,7 +56,11 @@ def create_lmdb_train(
     
     db_path = name.rstrip('/\\') + '.db'
     if os.path.exists(db_path):
-        raise Exception('database already exist!')
+        print('remove existing database:', db_path)
+        if os.path.isdir(db_path):
+            shutil.rmtree(db_path)
+        else:
+            os.remove(db_path)
     env = lmdb.open(db_path, map_size=map_size, writemap=True)
     with env.begin(write=True) as txn:
         # txn is a Transaction object
