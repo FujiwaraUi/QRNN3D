@@ -40,6 +40,8 @@ def Data2Volume(data, ksizes, strides):
 
 def crop_center(img,cropx,cropy):
     _,y,x = img.shape
+    cropx = min(cropx, x)
+    cropy = min(cropy, y)
     startx = x//2-(cropx//2)
     starty = y//2-(cropy//2)
     return img[:, starty:starty+cropy,startx:startx+cropx]
