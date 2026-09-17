@@ -73,6 +73,8 @@ def train_options(parser):
                         default=None, help='checkpoint to use.')
     parser.add_argument('--dataroot', '-d', type=str,
                         default='/data/weikaixuan/hsi/data/ICVL64_31.db', help='data root')
+    parser.add_argument('--vis-dir', type=str, default=None,
+                        help='directory for saving visualization plots outside the repo')
     parser.add_argument('--clip', type=float, default=1e6)
     parser.add_argument('--gpu-ids', type=str, default='0', help='gpu ids')
     opt = parser.parse_args()
@@ -123,14 +125,15 @@ class Engine(object):
         self.epoch = 0  # start from epoch 0 or last checkpoint epoch
         self.iteration = 0
 
-        cuda = not self.opt.no_cuda
-        self.device = 'cuda' if cuda else 'cpu'
-        print('Cuda Acess: %d' % cuda)
-        if cuda and not torch.cuda.is_available():
-            raise Exception("No GPU found, please run without --cuda")
+        requested_cuda = not self.opt.no_cuda
+        cuda_available = requested_cuda and torch.cuda.is_available()
+        self.device = 'cuda' if cuda_available else 'cpu'
+        print('Cuda Access: %d' % int(cuda_available))
+        if requested_cuda and not cuda_available:
+            print('CUDA requested but unavailable on this system; falling back to CPU.')
 
         torch.manual_seed(self.opt.seed)
-        if cuda:
+        if cuda_available:
             torch.cuda.manual_seed(self.opt.seed)
 
         """Model"""
@@ -157,7 +160,7 @@ class Engine(object):
         
         print(self.criterion)
 
-        if cuda:
+        if self.device == 'cuda':
             self.net.to(self.device)
             self.criterion = self.criterion.to(self.device)
 
@@ -282,8 +285,8 @@ class Engine(object):
 
         for batch_idx, (inputs, targets) in enumerate(train_loader):
             
-            if not self.opt.no_cuda:
-                inputs, targets = inputs.to(self.device), targets.to(self.device)            
+            if self.device == 'cuda':
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
             outputs, loss_data, total_norm = self.__step(True, inputs, targets)
             train_loss += loss_data
             avg_loss = train_loss / (batch_idx+1)
@@ -311,8 +314,8 @@ class Engine(object):
         print('[i] Eval dataset {}...'.format(name))
         with torch.no_grad():
             for batch_idx, (inputs, targets) in enumerate(valid_loader):
-                if not self.opt.no_cuda:
-                    inputs, targets = inputs.to(self.device), targets.to(self.device)                
+                if self.device == 'cuda':
+                    inputs, targets = inputs.to(self.device), targets.to(self.device)
 
                 outputs, loss_data, _ = self.__step(False, inputs, targets)
                 psnr = np.mean(cal_bwpsnr(outputs, targets))
@@ -376,7 +379,7 @@ class Engine(object):
 
         with torch.no_grad():
             for batch_idx, (inputs, targets) in enumerate(test_loader):
-                if not self.opt.no_cuda:
+                if self.device == 'cuda':
                     inputs, targets = inputs.cuda(), targets.cuda()
                 outputs, loss_data, _ = self.__step(False, inputs, targets)
                 
@@ -416,8 +419,8 @@ class Engine(object):
 
         with torch.no_grad():
             for batch_idx, inputs in enumerate(test_loader):
-                if not self.opt.no_cuda:
-                    inputs = inputs.cuda()           
+                if self.device == 'cuda':
+                    inputs = inputs.cuda()
 
                 outputs = self.forward(inputs)
 
@@ -426,8 +429,15 @@ class Engine(object):
                 output_np = outputs[0].cpu().numpy()
 
                 display = np.concatenate([input_np, output_np], axis=-1)
-                
-                Visualize3D(display)
+
+                if self.opt.vis_dir:
+                    save_root = self.opt.vis_dir
+                    os.makedirs(save_root, exist_ok=True)
+                    vis_path = join(save_root, '{}_{}_{}.png'.format(
+                        self.opt.prefix, self.opt.arch, batch_idx))
+                    Visualize3D(display, save_path=vis_path, show=False)
+                else:
+                    Visualize3D(display)
                 # Visualize3D(outputs[0].cpu().numpy())
                 # Visualize3D((outputs-inputs).data[0].cpu().numpy())
                 

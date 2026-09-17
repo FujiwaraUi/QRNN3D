@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg', force=True)
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -91,7 +93,7 @@ def visualize(filename, matkey, load=loadmat, preprocess=None):
     Visualize3D(data)
     # Visualize3D(np.squeeze(data[:,0,:,:]))
 
-def Visualize3D(data, meta=None):
+def Visualize3D(data, meta=None, save_path=None, show=True):
     data = np.squeeze(data)
 
     for ch in range(data.shape[0]):        
@@ -99,27 +101,34 @@ def Visualize3D(data, meta=None):
     
     print(np.max(data), np.min(data))
 
-    ax = plt.subplot(111)
-    plt.subplots_adjust(left=0.25, bottom=0.25)
-
+    fig, ax = plt.subplots(figsize=(10, 5))
     frame = 0
-    # l = plt.imshow(data[frame,:,:])
-    
-    l = plt.imshow(data[frame,:,:], cmap='gray') #shows 256x256 image, i.e. 0th frame
-    # plt.colorbar()
-    axcolor = 'lightgoldenrodyellow'
-    axframe = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
-    sframe = Slider(axframe, 'Frame', 0, data.shape[0]-1, valinit=0)
+    l = ax.imshow(data[frame, :, :], cmap='gray')
+    ax.set_title('Frame {}'.format(frame))
+    ax.axis('off')
 
-    def update(val):
-        frame = int(np.around(sframe.val))
-        l.set_data(data[frame,:,:])
-        if meta is not None:
-            axframe.set_title(meta[frame])
+    if data.shape[0] > 1:
+        axcolor = 'lightgoldenrodyellow'
+        axframe = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+        sframe = Slider(axframe, 'Frame', 0, data.shape[0]-1, valinit=0)
 
-    sframe.on_changed(update)
+        def update(val):
+            frame = int(np.around(sframe.val))
+            l.set_data(data[frame, :, :])
+            ax.set_title('Frame {}'.format(frame))
+            if meta is not None:
+                ax.set_title(meta[frame])
+            fig.canvas.draw_idle()
 
-    plt.show()
+        sframe.on_changed(update)
+
+    if save_path is not None:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        fig.savefig(save_path, dpi=200, bbox_inches='tight')
+
+    if show:
+        plt.show()
+    plt.close(fig)
 
 
 def data_augmentation(image, mode=None):
