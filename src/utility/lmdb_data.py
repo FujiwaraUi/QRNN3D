@@ -9,6 +9,28 @@ except ImportError:
 
 MAT_DATA = "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat/"
 DB_DATA =  "/mnt/data/User/HSID/Dataset/ICVL-BGU/06_QRNN3D/db/ICVL_QRNN3D"
+TRAIN_PATH = 'ICVL_train.txt'
+
+def load_train_filenames(datadir):
+    """ICVL_train.txt を優先して読み込み、存在しない場合は全 *.mat を返す."""
+    src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    train_list = os.path.join(src_dir, TRAIN_PATH)
+
+    if os.path.exists(train_list):
+        with open(train_list, 'r', encoding='utf-8') as f:
+            names = [line.strip() for line in f if line.strip()]
+
+        names = [name if name.lower().endswith('.mat') else name + '.mat' for name in names]
+        valid = [name for name in names if os.path.exists(os.path.join(datadir, name))]
+        if valid:
+            print('Using {} training files from {}'.format(len(valid), os.path.basename(train_list)))
+            return valid
+
+    fns = os.listdir(datadir)
+    fns = [fn for fn in fns if fn.lower().endswith('.mat')]
+    print('Using {} files from datadir fallback'.format(len(fns)))
+    return fns
+
 
 def create_lmdb_train(
     datadir, fns, name, matkey,
@@ -108,8 +130,7 @@ def create_icvl64_31():
     print('create icvl64_31...')
     # datadir = '/data/weikaixuan/hsi/data/Training/' # your own data address. *.mat
     datadir = MAT_DATA
-    fns = os.listdir(datadir) 
-    fns = [fn.split('.')[0]+'.mat' for fn in fns]
+    fns = load_train_filenames(datadir)
     
     create_lmdb_train(
         datadir, fns, DB_DATA, 'rad',  # your own dataset address
