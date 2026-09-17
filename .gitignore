@@ -9,3 +9,4 @@ runs
 bak
 *.zip
 lib
+test.py
