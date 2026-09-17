@@ -59,6 +59,8 @@ Download ICVL hyperspectral image database from [here](http://icvl.cs.bgu.ac.il/
 * [Blind Gaussian noise removal]:   
 ```python hsi_test.py -a qrnn3d -p gauss -r -rp checkpoints/qrnn3d/gauss/model_epoch_50_118454.pth```
 
+```python hsi_test.py -a qrnn3d -p gauss -r -rp /mnt/data/User/HSID/Pre_Model/qrnn3d/gauss/model_epoch_50_118454.pth --vis-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/06_QRNN3D/visuable/gauss --no-cuda```
+
 * [Mixture noise removal]:  
 ```python hsi_test.py -a qrnn3d -p complex -r -rp checkpoints/qrnn3d/complex/model_epoch_100_159904.pth```
 
