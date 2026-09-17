@@ -10,3 +10,4 @@ bak
 *.zip
 lib
 test.py
+/mnt/data/User/Code/research/Methods/06_QRNN3D/QRNN3D/tests
