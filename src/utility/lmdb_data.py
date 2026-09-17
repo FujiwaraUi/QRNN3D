@@ -7,8 +7,8 @@ try:
 except ImportError:
     from caffe_datum import Datum
 
-MAT_DATA = "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_06_QRNN3D/mat_06_QRNN3D/"
-DB_DATA =  "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_06_QRNN3D/db_06_QRNN3D/ICVL_QRNN3D"
+MAT_DATA = "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat/"
+DB_DATA =  "/mnt/data/User/HSID/Dataset/ICVL-BGU/06_QRNN3D/db/ICVL_QRNN3D"
 
 def create_lmdb_train(
     datadir, fns, name, matkey,
