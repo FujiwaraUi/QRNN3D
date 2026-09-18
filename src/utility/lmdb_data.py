@@ -11,7 +11,7 @@ MAT_DATA = "/mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat/"
 DB_DATA =  "/mnt/data/User/HSID/Dataset/ICVL-BGU/06_QRNN3D/db/ICVL_QRNN3D"
 TRAIN_PATH = 'ICVL_train.txt'
 
-def load_train_filenames(datadir):
+def load_train_filenames(datadir, TRAIN_PATH):
     """ICVL_train.txt を優先して読み込み、存在しない場合は全 *.mat を返す."""
     src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     train_list = os.path.join(src_dir, TRAIN_PATH)
@@ -130,7 +130,13 @@ def create_icvl64_31():
     print('create icvl64_31...')
     # datadir = '/data/weikaixuan/hsi/data/Training/' # your own data address. *.mat
     datadir = MAT_DATA
-    fns = load_train_filenames(datadir)
+
+    """
+    with open(TRAIN_PATH, "r", encoding="utf-8") as f:
+    fns = [line.strip() for line in f if line.strip()]
+    """
+
+    fns = load_train_filenames(datadir, TRAIN_PATH)
     
     create_lmdb_train(
         datadir, fns, DB_DATA, 'rad',  # your own dataset address
