@@ -1,81 +1,93 @@
 # QRNN3D
 
-The implementation of TNNLS 2020 paper ["3D Quasi-Recurrent Neural Network for Hyperspectral Image Denoising"](https://arxiv.org/abs/2003.04547)
+The implementation of TNNLS 2020 paper ["3D Quasi-Recurrent Neural Network for Hyperspectral Image Denoising"](https://arxiv.org/abs/2003.04547).
 
-> 🌟 See also the follow up works of QRNN3D:
-> - [DPHSIR](https://github.com/Zeqiang-Lai/DPHSIR) - Plug-and-play QRNN3D that solve any HSI restoration task in one model.
-> - [HSDT](https://github.com/Zeqiang-Lai/HSDT) - State-of-the-art HSI denoising transformer that follows up 3D paradigam of QRNN3D.
-> - [MAN](https://github.com/Zeqiang-Lai/MAN) - Improved QRNN3D with significant performance improvement and less parameters.
->
-> 📉 Performance: QRNN3D < DPHSIR < MAN < HSDT
+This repository now keeps the active experiment flow in a small Python utility set that separately handles:
 
-## Highlights
+- noisy data generation
+- model inference
+- evaluation against clean references
+- split-file based selection to reduce train/test leakage risk
 
-* Our network outperforms all leading-edge methods (2019)
-on ICVL dataset in both Gaussian and complex noise cases, as shown below:
+Legacy training and benchmark scripts that were originally scattered around the repo were archived to `tests/PRE_TRASH` to keep the active workflow lean and explicit.
 
+## Active workflow
 
-<img src="imgs/runtime_gauss.png" height="140px"/> <img src="imgs/runtime_complex.png" height="140px"/>
+The current experiment path is:
 
-* We demonstrated our network pretrained on 31-bands natural HSI database (ICVL) can be utilized to recover remotely-sensed HSI (> 100 bands) corrupted by real-world non-Gaussian noise due to terrible atmosphere and water absorptions
+1. generate noisy HSI data
+2. run inference with a trained QRNN3D checkpoint
+3. evaluate against the clean target using PSNR / SSIM / SAM / ERGAS
 
-<img src="imgs/PaviaU.gif" height="140px"/>  <img src="imgs/Indian_pines.gif" height="140px"/>  <img src="imgs/Urban.gif" height="140px"/> 
+The active modules are:
 
+- `src/matpy/generate_noisy_dataset.py`
+- `src/matpy/evaluate_model.py`
+- `src/matpy/run_experiment.py`
+- `src/matpy/model_eval.py`
+- `src/matpy/noise.py`
+- `src/matpy/metrics.py`
+- `src/matpy/io_utils.py`
 
-## Prerequisites
-* Python >=3.5, PyTorch >= 0.4.1
-* Requirements: opencv-python, tensorboardX, caffe
-* Platforms: Ubuntu 16.04, cuda-8.0
+## Recommended data split
 
+Use the split files already provided in the repo instead of processing the whole directory blindly:
 
-## Quick Start
+- `src/ICVL_train.txt`
+- `src/ICVL_test_gauss.txt`
+- `src/ICVL_test_complex.txt`
 
-### 1. Preparing your training/testing datasets
+This keeps evaluation samples out of the generation/inference path when the experiment is meant to be split-based.
 
-Download ICVL hyperspectral image database from [here](http://icvl.cs.bgu.ac.il/hyperspectral/) (we only need ```.mat``` version)
+## Quick start
 
-* The train-test split can be found in ```ICVL_train.txt``` and ```ICVL_test_*.txt```. (Note we split the 101 testing data into two parts for Gaussian and complex denoising respectively.)
+### 1. Generate noisy files
 
-#### Training dataset
+```bash
+PYTHONPATH=src conda run -n qrnn3d python -m matpy.generate_noisy_dataset \
+  --clean-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat \
+  --out-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois \
+  --noise-type gaussian \
+  --sigma 25.0 \
+  --seed 0 \
+  --split-file /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_test_gauss.txt
+```
 
-*Note protobuf and lmdb are required to execute the following instructions.*
+### 2. Evaluate a pretrained model
 
-* Read the function ```create_icvl64_31``` in ```utility/lmdb_data.py``` and follow the instruction comment to define your data/dataset address. 
+```bash
+PYTHONPATH=src conda run -n qrnn3d python -m matpy.evaluate_model \
+  --clean-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat \
+  --noisy-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois \
+  --model-path /mnt/data/User/HSID/Pre_Model/qrnn3d/gauss/model_epoch_50_118454.pth \
+  --out-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/pred \
+  --tile-size 32 \
+  --split-file /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_test_gauss.txt
+```
 
-* Create ICVL training dataset by ```python utility/lmdb_data.py```
+### 3. Run the full experiment flow
 
-#### Testing dataset
+```bash
+PYTHONPATH=src conda run -n qrnn3d python -m matpy.run_experiment \
+  --clean-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat \
+  --out-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois \
+  --model-path /mnt/data/User/HSID/Pre_Model/qrnn3d/gauss/model_epoch_50_118454.pth \
+  --noise-type gaussian \
+  --sigma 25.0 \
+  --tile-size 32 \
+  --split-file /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_test_gauss.txt
+```
 
-*Note matlab is required to execute the following instructions.*
+## Legacy files
 
-* Read the matlab code of ```matlab/generate_dataset*``` to understand how we generate noisy HSIs.
+Older benchmark and training scripts have been archived into `tests/PRE_TRASH` in order to keep the active project focused on the current Python evaluation pipeline.
 
-* Read and modify the matlab code of ```matlab/HSIData.m``` to generate your own testing dataset
-
-### 2. Testing with pretrained models
-
-* Download our pretrained models from [OneDrive](https://1drv.ms/u/s!AqddfvhavTRiijWftKWgLfUgdSaD?e=nHGjIk) and move them to ```checkpoints/qrnn3d/gauss/``` and ```checkpoints/qrnn3d/complex/``` respectively.
-
-* [Blind Gaussian noise removal]:   
-```python hsi_test.py -a qrnn3d -p gauss -r -rp checkpoints/qrnn3d/gauss/model_epoch_50_118454.pth```
-
-```python hsi_test.py -a qrnn3d -p gauss -r -rp /mnt/data/User/HSID/Pre_Model/qrnn3d/gauss/model_epoch_50_118454.pth --vis-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/06_QRNN3D/visuable/gauss --no-cuda```
-
-* [Mixture noise removal]:  
-```python hsi_test.py -a qrnn3d -p complex -r -rp checkpoints/qrnn3d/complex/model_epoch_100_159904.pth```
-
-You can also use ```hsi_eval.py``` to evaluate quantitative HSI denoising performance.  
-
-### 3. Training from scratch
-
-* Training a blind Gaussian model firstly by  
-```python hsi_denoising_gauss.py -a qrnn3d -p gauss --dataroot (your own dataroot)```
-
-* Using the pretrained Gaussian model as initialization to train a complex model:  
-```python hsi_denoising_complex.py -a qrnn3d -p complex --dataroot (your own dataroot) -r -rp checkpoints/qrnn3d/gauss/model_epoch_50_118454.pth --no-ropt```
+These legacy files are kept only for reference history and are not the preferred execution path for current experiments.
 
 ## Citation
-If you find this work useful for your research, please cite: 
+
+If you find this work useful for your research, please cite:
+
 ```bibtex
 @article{wei2020QRNN3D,
   title={3-D Quasi-Recurrent Neural Network for Hyperspectral Image Denoising},
@@ -86,7 +98,8 @@ If you find this work useful for your research, please cite:
 }
 ```
 
-and follow up works
+and follow-up works
+
 ```bibtex
 @article{lai2022dphsir,
     title = {Deep plug-and-play prior for hyperspectral image restoration},
@@ -115,4 +128,5 @@ and follow up works
 ```
 
 ## Contact
-Please contact me if there is any question (kaixuan.wei at kaust.edu.sa)  
+
+Please contact the original authors for questions about the method itself.

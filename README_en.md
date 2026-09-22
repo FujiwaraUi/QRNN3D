@@ -1,23 +1,15 @@
 # QRNN3D Python Noise Generation / Evaluation Helper
 
-This repository adds a Python-only evaluation helper for the QRNN3D workflow.
-The original MATLAB benchmark code generated noisy hyperspectral images and then evaluated the restoration quality. This utility reproduces the core parts in Python so it can be used without MATLAB.
+This repository now keeps the active workflow in a small Python utility set that focuses on:
 
-## What is included
+- noisy dataset generation
+- model inference
+- evaluation against the clean target
+- split-file based selection to reduce leakage risk between train and evaluation data
 
-- HSI loading from .mat files
-- HSI normalization and center-crop preprocessing
-- Gaussian noise generation
-- Blind Gaussian noise generation
-- Mixture noise generation
-- Standard HSI quality metrics:
-  - PSNR
-  - SSIM
-  - SAM
-  - ERGAS
-- Utility functions for saving noisy datasets in a MATLAB-like .mat format
+Legacy training and benchmark scripts were archived under `tests/PRE_TRASH` to keep the active project focused on the current Python evaluation pipeline.
 
-## Directory layout
+## Active modules
 
 ```text
 src/
@@ -26,21 +18,66 @@ src/
     noise.py
     metrics.py
     io_utils.py
-    runner.py
+    generate_noisy_dataset.py
+    evaluate_model.py
+    run_experiment.py
+    model_eval.py
 ```
+
+## Data split recommendation
+
+Use the existing split files instead of processing every file in a folder:
+
+- `src/ICVL_train.txt`
+- `src/ICVL_test_gauss.txt`
+- `src/ICVL_test_complex.txt`
+
+This keeps evaluation data out of the generation/inference pipeline when split-based evaluation is intended.
 
 ## Quick start
 
+### Generate noisy files
+
 ```bash
-cd src
-python -m matpy.runner --clean-dir /path/to/clean_dataset --out-dir /path/to/noisy_dataset --noise-type gaussian --sigma 25 --seed 0
+PYTHONPATH=src conda run -n qrnn3d python -m matpy.generate_noisy_dataset \
+  --clean-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat \
+  --out-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois \
+  --noise-type gaussian \
+  --sigma 25.0 \
+  --seed 0 \
+  --split-file /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_test_gauss.txt
+```
+
+### Evaluate a pretrained model
+
+```bash
+PYTHONPATH=src conda run -n qrnn3d python -m matpy.evaluate_model \
+  --clean-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat \
+  --noisy-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois \
+  --model-path /mnt/data/User/HSID/Pre_Model/qrnn3d/gauss/model_epoch_50_118454.pth \
+  --out-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/pred \
+  --tile-size 32 \
+  --split-file /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_test_gauss.txt
+```
+
+### Run the full pipeline
+
+```bash
+PYTHONPATH=src conda run -n qrnn3d python -m matpy.run_experiment \
+  --clean-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat \
+  --out-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois \
+  --model-path /mnt/data/User/HSID/Pre_Model/qrnn3d/gauss/model_epoch_50_118454.pth \
+  --noise-type gaussian \
+  --sigma 25.0 \
+  --tile-size 32 \
+  --split-file /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_test_gauss.txt
 ```
 
 ## Notes
 
 - This is a Python approximation of the MATLAB benchmark flow.
-- It focuses on the parts that are needed to evaluate a pretrained model on noisy hyperspectral data.
-- It does not re-implement the full MATLAB `lib` benchmark library, which contains external methods such as BM4D, LLRT, ITSReg, FastHyDe, and similar packages.
+- The current workflow is deliberately split into generation, evaluation, and experiment orchestration for clarity and safer experimental practice.
+- Older benchmark or training scripts were archived to `tests/PRE_TRASH` rather than kept in the active path.
 
 ## Example
 
