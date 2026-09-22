@@ -54,14 +54,14 @@ def load_pretrained_qrnn3d(model_path: str, device: Optional[torch.device] = Non
     return model, device
 
 
-def infer_on_hsi(model: torch.nn.Module, hsi: np.ndarray, device: torch.device, clamp: bool = True) -> np.ndarray:
-    arr = np.asarray(hsi, dtype=np.float32)
-    if arr.ndim != 3:
-        raise ValueError(f'Expected 3D HSI, got shape {arr.shape}')
-    if arr.shape[0] > 10 and arr.shape[0] < arr.shape[-1]:
-        arr = arr.transpose(1, 2, 0)
+def _infer_tile(model: torch.nn.Module, tile: np.ndarray, device: torch.device) -> np.ndarray:
+    original_shape = tile.shape
+    pad_h = 1 if tile.shape[1] % 2 != 0 else 0
+    pad_w = 1 if tile.shape[2] % 2 != 0 else 0
+    if pad_h or pad_w:
+        tile = np.pad(tile, ((0, 0), (0, pad_h), (0, pad_w)), mode='reflect')
 
-    tensor = torch.from_numpy(arr.transpose(2, 0, 1)[None]).to(device).float()
+    tensor = torch.from_numpy(tile[None, None]).to(device).float()
     with torch.no_grad():
         out = model(tensor)
 
@@ -69,16 +69,74 @@ def infer_on_hsi(model: torch.nn.Module, hsi: np.ndarray, device: torch.device, 
         out = out[0]
 
     out = out.detach().cpu().numpy()
+    if out.ndim == 5 and out.shape[0] == 1:
+        out = out[0]
+    if out.ndim == 4 and out.shape[0] == 1:
+        out = out[0]
+    if out.ndim not in (3, 4):
+        raise ValueError(f'Unexpected model output shape {out.shape} for tile inference.')
+
     if out.ndim == 4 and out.shape[0] == 1:
         out = out[0]
 
-    if out.shape[0] > 10 and out.shape[0] < out.shape[-1]:
-        out = out.transpose(1, 2, 0)
+    if pad_h or pad_w:
+        out = out[:, :original_shape[1], :original_shape[2]]
+    return np.asarray(out, dtype=np.float32)
 
+
+def infer_on_hsi(
+    model: torch.nn.Module,
+    hsi: np.ndarray,
+    device: torch.device,
+    clamp: bool = True,
+    tile_size: Optional[int] = 64,
+    overlap: int = 16,
+) -> np.ndarray:
+    arr = np.asarray(hsi, dtype=np.float32)
+    if arr.ndim != 3:
+        raise ValueError(f'Expected 3D HSI, got shape {arr.shape}')
+
+    # Real project data is stored in CHW layout as (C, H, W). Some helper code may
+    # produce HWC arrays, so convert only in that case.
+    if arr.shape[0] <= 10 and arr.shape[-1] > 10:
+        arr = arr.transpose(2, 0, 1)
+
+    if tile_size is None or tile_size <= 0:
+        tile_size = max(arr.shape[1], arr.shape[2])
+    overlap = max(0, min(overlap, tile_size // 2))
+
+    bands, height, width = arr.shape
+    if height <= tile_size and width <= tile_size:
+        pred = _infer_tile(model, arr, device)
+        pred = pred.astype(np.float32)
+        if clamp:
+            pred = np.clip(pred, 0.0, 1.0)
+        return pred.transpose(1, 2, 0)
+
+    step_h = max(1, tile_size - overlap)
+    step_w = max(1, tile_size - overlap)
+    out = np.zeros((bands, height, width), dtype=np.float32)
+    weights = np.zeros((height, width), dtype=np.float32)
+
+    for y0 in range(0, height, step_h):
+        y1 = min(height, y0 + tile_size)
+        for x0 in range(0, width, step_w):
+            x1 = min(width, x0 + tile_size)
+            tile = arr[:, y0:y1, x0:x1]
+            pred = _infer_tile(model, tile, device)
+            if pred.shape != tile.shape:
+                pred = pred[:, : y1 - y0, : x1 - x0]
+            out[:, y0:y1, x0:x1] += pred
+            weights[y0:y1, x0:x1] += 1.0
+
+    if device.type == 'cuda':
+        torch.cuda.empty_cache()
+
+    out = out / np.maximum(weights, 1.0)[None, :, :]
     out = out.astype(np.float32)
     if clamp:
         out = np.clip(out, 0.0, 1.0)
-    return out
+    return out.transpose(1, 2, 0)
 
 
 def evaluate_single_pair(clean_path: str, noisy_path: str, model_path: str) -> Dict[str, float]:
@@ -101,8 +159,15 @@ def evaluate_single_pair(clean_path: str, noisy_path: str, model_path: str) -> D
 
 
 def loadmat_object(path: str) -> Dict[str, np.ndarray]:
+    import h5py
+    try:
+        with h5py.File(path, 'r') as f:
+            return {k: np.asarray(f[k]) for k in f.keys()}
+    except Exception:
+        pass
+
     from scipy.io import loadmat
-    data = loadmat(path, squeeze_me=True)
+    data = loadmat(path, squeeze_me=True, struct_as_record=False)
     return {k: v for k, v in data.items() if not k.startswith('__')}
 
 

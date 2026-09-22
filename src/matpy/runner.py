@@ -50,14 +50,14 @@ def generate_noisy_dataset(
     return generated
 
 
-def predict_dataset(noisy_dir: str, model_path: str, out_dir: str) -> List[str]:
+def predict_dataset(noisy_dir: str, model_path: str, out_dir: str, tile_size: int = 64) -> List[str]:
     os.makedirs(out_dir, exist_ok=True)
     model, device = load_pretrained_qrnn3d(model_path)
     generated: List[str] = []
 
     for path in iter_mat_files(noisy_dir):
         noisy = load_mat_hsi(path, key='input')
-        pred = infer_on_hsi(model, noisy, device)
+        pred = infer_on_hsi(model, noisy, device, tile_size=tile_size)
 
         name = os.path.basename(path)
         out_path = os.path.join(out_dir, name)
@@ -95,12 +95,13 @@ def full_pipeline(
     sigma: Optional[float] = 25.0,
     seed: int = 0,
     result_json: Optional[str] = None,
+    tile_size: int = 64,
 ) -> Dict[str, float]:
     noisy_dir = os.path.join(out_dir, 'noisy')
     pred_dir = os.path.join(out_dir, 'pred')
 
     generate_noisy_dataset(clean_dir, noisy_dir, noise_type=noise_type, sigma=sigma, seed=seed)
-    predict_dataset(noisy_dir, model_path, pred_dir)
+    predict_dataset(noisy_dir, model_path, pred_dir, tile_size=tile_size)
     summary = evaluate_dataset(clean_dir, pred_dir)
 
     if result_json is not None:
@@ -120,6 +121,7 @@ def main() -> None:
     parser.add_argument('--sigma', type=float, default=25.0)
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--result-json', type=str, default=None)
+    parser.add_argument('--tile-size', type=int, default=64, help='tile size for large HSI inference to limit GPU memory use')
     parser.add_argument('--action', choices=['generate', 'evaluate', 'full'], default='full')
     args = parser.parse_args()
 
@@ -132,7 +134,7 @@ def main() -> None:
         if args.model_path is None:
             raise ValueError('Provide --model-path when using evaluate action.')
         pred_dir = os.path.join(args.out_dir, 'pred')
-        predict_dataset(os.path.join(args.out_dir, 'noisy'), args.model_path, pred_dir)
+        predict_dataset(os.path.join(args.out_dir, 'noisy'), args.model_path, pred_dir, tile_size=args.tile_size)
         summary = evaluate_dataset(args.clean_dir, pred_dir)
         print(json.dumps(summary, indent=2))
         return
@@ -140,7 +142,16 @@ def main() -> None:
     if args.action == 'full':
         if args.model_path is None:
             raise ValueError('Provide --model-path when using full action.')
-        summary = full_pipeline(args.clean_dir, args.out_dir, args.model_path, args.noise_type, args.sigma, args.seed, args.result_json)
+        summary = full_pipeline(
+            args.clean_dir,
+            args.out_dir,
+            args.model_path,
+            args.noise_type,
+            args.sigma,
+            args.seed,
+            args.result_json,
+            tile_size=args.tile_size,
+        )
         print(json.dumps(summary, indent=2))
         return
 

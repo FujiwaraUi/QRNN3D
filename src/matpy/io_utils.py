@@ -1,18 +1,64 @@
 import os
 from typing import Optional
 
+import h5py
 import numpy as np
 from scipy.io import loadmat, savemat
 
 
+def _extract_hdf5_array(group, key: str):
+    if key in group:
+        arr = np.asarray(group[key], dtype=np.float32)
+        return arr
+
+    for candidate in ('rad', 'gt', 'hsi', 'img', 'input', 'data'):
+        if candidate in group:
+            arr = np.asarray(group[candidate], dtype=np.float32)
+            return arr
+
+    raise KeyError(f'No valid HSI key found. Available keys: {list(group.keys())[:20]}')
+
+
+def _read_hdf5_mat(path: str, key: str):
+    with h5py.File(path, 'r') as f:
+        if key in f:
+            return _extract_hdf5_array(f, key)
+        for candidate in ('rad', 'gt', 'hsi', 'img', 'input', 'data'):
+            if candidate in f:
+                return _extract_hdf5_array(f, candidate)
+        raise KeyError(f'Mat file {path} has no key {key!r} and no fallback key found. Available keys: {list(f.keys())[:20]}')
+
+
 def load_mat_hsi(path: str, key: str = 'rad') -> np.ndarray:
-    data = loadmat(path)
-    if key not in data:
-        raise KeyError(f'Mat file {path} has no key {key!r}')
-    arr = np.asarray(data[key], dtype=np.float32)
-    if arr.ndim == 2:
-        return arr[:, :, None]
-    return arr
+    try:
+        with h5py.File(path, 'r') as f:
+            arr = _extract_hdf5_array(f, key)
+            if arr.ndim == 2:
+                return arr[:, :, None]
+            return arr
+    except (OSError, ValueError):
+        pass
+
+    try:
+        data = loadmat(path, struct_as_record=False, squeeze_me=True)
+    except Exception:
+        data = None
+
+    if data is not None and key in data:
+        arr = np.asarray(data[key], dtype=np.float32)
+        if arr.ndim == 2:
+            return arr[:, :, None]
+        return arr
+
+    if data is not None:
+        for candidate in (key, 'rad', 'gt', 'hsi', 'img', 'input', 'data'):
+            if candidate in data:
+                arr = np.asarray(data[candidate], dtype=np.float32)
+                if arr.ndim == 2:
+                    return arr[:, :, None]
+                return arr
+
+    raise KeyError(f'Mat file {path} has no usable key {key!r}')
 
 
 def save_mat_hsi(path: str, gt: np.ndarray, input_img: np.ndarray, sigma: float, key_gt: str = 'gt', key_input: str = 'input', key_sigma: str = 'sigma') -> None:

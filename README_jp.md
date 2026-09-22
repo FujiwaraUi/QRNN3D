@@ -34,6 +34,8 @@ src/
 ```bash
 cd src
 python -m matpy.runner --clean-dir /path/to/clean_dataset --out-dir /path/to/noisy_dataset --noise-type gaussian --sigma 25 --seed 0
+
+python -m matpy.runner   --clean-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat   --out-dir /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois   --model-path /mnt/data/User/HSID/Pre_Model/qrnn3d/gauss/model_epoch_50_118454.pth   --noise-type gaussian   --sigma 25.0   --seed 0   --result-json /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois/results.json   --action full
 ```
 
 ## 補足
