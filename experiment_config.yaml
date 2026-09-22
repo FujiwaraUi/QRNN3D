@@ -1,0 +1,33 @@
+# QRNN3D experiment configuration
+# This is the baseline configuration for deterministic noise generation and evaluation.
+# It intentionally uses the official split files to reduce train/test leakage risk.
+
+project:
+  name: qrnn3d_icvl_gauss
+  description: Gaussian denoising experiment on the ICVL dataset
+
+paths:
+  clean_dir: /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/mat
+  out_dir: /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois
+  model_path: /mnt/data/User/HSID/Pre_Model/qrnn3d/gauss/model_epoch_50_118454.pth
+  result_json: /mnt/data/User/HSID/Dataset/ICVL-BGU/ICVL_HS_2016/nois/results.json
+
+split:
+  use_split_file: true
+  train_file: /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_train.txt
+  val_file: /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_test_gauss.txt
+  test_file: /home/fy/Mnt/reearch/Methods/06_QRNN3D/QRNN3D/src/ICVL_test_gauss.txt
+
+noise:
+  type: gaussian
+  sigma: 25.0
+  seed: 0
+
+inference:
+  tile_size: 32
+  overlap: 8
+
+experiment:
+  action: full
+  mode: evaluation
+  note: Use the split list to select only the intended files for each run.
